@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentiment"
+version = "1.0.0"
+description = "Sentiment analysis: a Naive Bayes classifier written from scratch, benchmarked against scikit-learn."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Umer Hashmi" }]
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26", "scikit-learn>=1.3", "matplotlib>=3.7"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+sentiment = "sentiment.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
