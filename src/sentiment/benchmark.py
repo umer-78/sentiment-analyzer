@@ -36,7 +36,7 @@ def _scores(name: str, y_true, y_pred, seconds: float) -> Result:
     kw = {"pos_label": "positive", "zero_division": 0}
     return Result(
         name=name,
-        accuracy=sum(a == b for a, b in zip(y_true, y_pred)) / len(y_true),
+        accuracy=sum(a == b for a, b in zip(y_true, y_pred, strict=True)) / len(y_true),
         precision=precision_score(y_true, y_pred, **kw),
         recall=recall_score(y_true, y_pred, **kw),
         f1=f1_score(y_true, y_pred, **kw),

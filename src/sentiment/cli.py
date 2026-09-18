@@ -100,7 +100,7 @@ def _run(argv: list[str] | None = None) -> int:
     if args.cmd == "words":
         negative, positive = model.most_informative(args.n)
         print(f"{'most positive':<28} {'most negative':<28}")
-        for (pw, ps), (nw, ns) in zip(positive, negative):
+        for (pw, ps), (nw, ns) in zip(positive, negative, strict=True):
             print(f"{pw:<20} {ps:>6.2f}   {nw:<20} {ns:>6.2f}")
         return 0
 

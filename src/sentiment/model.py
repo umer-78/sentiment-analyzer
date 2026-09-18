@@ -32,14 +32,16 @@ class NaiveBayes:
     _default: dict[str, float] = field(default_factory=dict)
 
     # ------------------------------------------------------------------ fitting
-    def fit(self, documents: list[str], labels: list[str]) -> "NaiveBayes":
+    def fit(self, documents: list[str], labels: list[str]) -> NaiveBayes:
         if len(documents) != len(labels):
             raise ValueError("documents and labels must be the same length")
         if not documents:
             raise ValueError("no training data")
         counts: dict[str, Counter] = defaultdict(Counter)
         class_docs = Counter(labels)
-        for doc, label in zip(documents, labels):
+        # strict: one label per document. A mismatch means the caller lined the
+        # data up wrongly, and training on the overlap would hide it.
+        for doc, label in zip(documents, labels, strict=True):
             counts[label].update(self._tokens(doc))
 
         total_counts = Counter()
@@ -92,7 +94,7 @@ class NaiveBayes:
 
     def score(self, documents: list[str], labels: list[str]) -> float:
         preds = self.predict_many(documents)
-        return sum(p == y for p, y in zip(preds, labels)) / len(labels)
+        return sum(p == y for p, y in zip(preds, labels, strict=True)) / len(labels)
 
     # ------------------------------------------------------------ explanations
     def most_informative(self, n: int = 15, positive: str | None = None, negative: str | None = None):
@@ -134,7 +136,7 @@ class NaiveBayes:
         }))
 
     @classmethod
-    def load(cls, path: str | Path) -> "NaiveBayes":
+    def load(cls, path: str | Path) -> NaiveBayes:
         d = json.loads(Path(path).read_text())
         model = cls(alpha=d["alpha"], min_count=d["min_count"], tokenizer_options=d["tokenizer_options"])
         model.classes_ = d["classes"]

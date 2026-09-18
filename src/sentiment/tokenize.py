@@ -55,5 +55,7 @@ def tokenize(text: str, *, negation: bool = True, keep_stopwords: bool = True,
         if negation and lower in NEGATORS:
             negating = True
     if bigrams:
-        tokens += [f"{a}_{b}" for a, b in zip(tokens, tokens[1:])]
+        # The offset list is one shorter by construction — that is what makes
+        # these bigrams — so this zip must stop at the shorter one.
+        tokens += [f"{a}_{b}" for a, b in zip(tokens, tokens[1:], strict=False)]
     return tokens
