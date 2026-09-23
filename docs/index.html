@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>sentiment — Interactive Naive Bayes Sentiment Demo</title>
+  <meta name="description" content="Type a review and watch a from-scratch Naive Bayes classifier break down every word's contribution to the positive/negative decision.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232563eb'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='monospace'>:) </text></svg>">
+  <style>
+    :root {
+      --bg: #f6f7f9; --surface: #ffffff; --surface-2: #eef0f4; --border: #dde1e8;
+      --text: #16181d; --muted: #5d6573; --accent: #2563eb; --accent-ink: #ffffff;
+      --good: #15803d; --bad: #b91c1c; --radius: 12px;
+      --shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 4px 16px rgb(16 24 40 / 0.05);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1116; --surface: #161a21; --surface-2: #1d222b; --border: #2a303b;
+        --text: #e8eaee; --muted: #9aa3b2; --accent: #60a5fa; --accent-ink: #0b1220;
+        --good: #4ade80; --bad: #f87171; --shadow: none; color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    header.top h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+    header.top p { margin: 2px 0 0; color: var(--muted); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); min-width: 0; margin-bottom: 16px; }
+    .card h2 { font-size: 15px; margin: 0 0 12px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    input, select, textarea, button { font: inherit; color: inherit; }
+    input, select, textarea {
+      width: 100%; padding: 9px 11px; border-radius: 9px;
+      border: 1px solid var(--border); background: var(--surface-2); outline: none; min-width: 0;
+    }
+    textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+    input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    button { cursor: pointer; border: 1px solid var(--border); background: var(--surface-2); padding: 9px 14px; border-radius: 9px; font-weight: 600; }
+    button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+    .row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+    .row > * { flex: 1 1 160px; }
+    .row > button { flex: 0 0 auto; }
+    .muted { color: var(--muted); }
+    .mono { font-family: var(--mono); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    td.num, th.num { text-align: right; font-family: var(--mono); }
+    .table-wrap { overflow-x: auto; }
+    footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
+    .verdict { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .badge { display: inline-block; padding: 6px 14px; border-radius: 99px; font-weight: 800; font-size: 15px; letter-spacing: 0.02em; }
+    .badge.positive { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+    .badge.negative { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+    .prob { font-family: var(--mono); font-size: 28px; font-weight: 800; }
+    .bar { flex: 1; min-width: 180px; height: 14px; background: var(--surface-2); border-radius: 99px; overflow: hidden; display: flex; }
+    .bar .neg { background: var(--bad); height: 100%; }
+    .bar .pos { background: var(--good); height: 100%; }
+    .contribs { list-style: none; margin: 0; padding: 0; }
+    .contribs li { display: grid; grid-template-columns: 140px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .contribs li:last-child { border-bottom: 0; }
+    .contribs .tok { font-family: var(--mono); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .contribs .track { height: 8px; background: var(--surface-2); border-radius: 99px; position: relative; overflow: hidden; }
+    .contribs .track i { position: absolute; top: 0; bottom: 0; border-radius: 99px; }
+    .contribs .track .mid { left: 50%; width: 1px; background: var(--border); }
+    .contribs .w { font-family: var(--mono); font-weight: 700; text-align: right; min-width: 4em; }
+    .contribs .w.pos { color: var(--good); }
+    .contribs .w.neg { color: var(--bad); }
+    .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .examples button { font-size: 13px; padding: 6px 10px; font-weight: 500; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .chip { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); font-family: var(--mono); }
+    .note { background: var(--surface-2); border-radius: 8px; padding: 12px; font-size: 14px; margin-top: 12px; }
+    .grid2 { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+    code { font-family: var(--mono); background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <h1>sentiment</h1>
+        <p>Naive Bayes written from scratch — the counting, the add-alpha smoothing, the log-space arithmetic — plus a tokeniser built for reviews. Type and watch every word's vote.</p>
+      </div>
+      <a href="https://github.com/umer-78/sentiment-analyzer">Source on GitHub</a>
+    </header>
+
+    <section class="card" aria-labelledby="classify-h">
+      <h2 id="classify-h">Classify a review</h2>
+      <p class="muted" style="margin-top:0">The trained model (1,500 synthetic reviews, α=1.0 Laplace smoothing) is embedded in this page. Unknown words are ignored rather than zeroing a class; negation is tagged until the clause ends (<code>not_good</code>); repeated letters are squeezed; capitals become a <code>_caps</code> marker.</p>
+      <label for="text">Review text</label>
+      <textarea id="text">The screen is lovely but the battery is hopeless</textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="runBtn">Classify</button>
+        <div class="muted" style="flex:1 1 auto;font-size:13px">Live as you type · examples below</div>
+      </div>
+      <div class="examples" id="examples">
+        <button type="button" data-t="Absolutely love this. Battery lasts all day. Highly recommended. :)">positive template</button>
+        <button type="button" data-t="Complete waste of money. The app crashes on every launch. Asked for a refund.">negative template</button>
+        <button type="button" data-t="not bad at all, actually — no problems so far">hard positive</button>
+        <button type="button" data-t="looks great, works badly">hard negative</button>
+        <button type="button" data-t="LOOOOVE it, sooo smooth and quick :D">emphasis + emoji</button>
+        <button type="button" data-t="I would not recommend this to anyone. Zero out of ten.">negation</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="out-h">
+      <h2 id="out-h">Decision</h2>
+      <div class="verdict">
+        <span class="badge positive" id="label">positive</span>
+        <span class="prob" id="prob">—</span>
+        <span class="bar" aria-hidden="true"><span class="neg" id="barNeg" style="width:50%"></span><span class="pos" id="barPos" style="width:50%"></span></span>
+        <span class="muted" id="scores"></span>
+      </div>
+      <h2 style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em">Per-token contribution to log-odds (positive − negative)</h2>
+      <ul class="contribs" id="contribs"></ul>
+      <div class="note muted" id="tokNote"></div>
+    </section>
+
+    <section class="grid2">
+      <div class="card" aria-labelledby="info-h">
+        <h2 id="info-h">How the tokeniser helps</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>problem</th><th>handled by</th></tr></thead>
+            <tbody>
+              <tr><td><code>not good</code> ≠ <code>good</code></td><td>negation tagging until clause ends</td></tr>
+              <tr><td><code>loooove</code>, <code>LOVE</code></td><td>letters squeezed, caps → <code>_caps</code></td></tr>
+              <tr><td><code>:)</code> 👍</td><td>emoticons/emoji survive</td></tr>
+              <tr><td><code>!</code> sentiment, <code>,</code> not</td><td>punctuation filtered, not blanket-stripped</td></tr>
+              <tr><td>unseen words</td><td>ignored, not allowed to zero a class</td></tr>
+              <tr><td>long documents</td><td>log-space sums, no underflow</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" aria-labelledby="info2-h">
+        <h2 id="info2-h">Results (Python package)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>model</th><th class="num">accuracy</th><th class="num">f1</th></tr></thead>
+            <tbody>
+              <tr><td>from scratch (unigrams)</td><td class="num">0.968</td><td class="num">0.969</td></tr>
+              <tr><td>from scratch (+ bigrams)</td><td class="num">0.972</td><td class="num">0.973</td></tr>
+              <tr><td>from scratch (no negation)</td><td class="num">0.964</td><td class="num">0.966</td></tr>
+              <tr><td>sklearn MultinomialNB</td><td class="num">0.968</td><td class="num">0.969</td></tr>
+              <tr><td>sklearn TF-IDF + logistic</td><td class="num">0.972</td><td class="num">0.973</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin-bottom:0">The from-scratch model matches sklearn's MultinomialNB to three decimals — it is the same algorithm, written out. Known limitation: contrast after “but” is not weighted; the model adds evidence and leans by volume.</p>
+      </div>
+    </section>
+
+    <footer>18 tests · Python 3.10+ · no runtime dependencies · Built by <a href="https://github.com/umer-78">Umer Hashmi</a></footer>
+  </div>
+
+  <script>
+    // Trained model embedded from models/naive-bayes.json
+    // log_likelihood: word -> [log P(word|negative), log P(word|positive)]
+    const LL = {":(":[-7.244,-9.355],":)":[-9.323,-6.957],":/":[-7.021,-9.355],":d":[-9.323,-6.716],"a":[-4.194,-4.936],"absolutely":[-5.768,-5.135],"absolutely_caps":[-7.937,-7.275],"absolutelythe":[-9.323,-8.661],"actually":[-8.63,-6.716],"actually_caps":[-9.323,-8.661],"ad":[-9.323,-8.661],"again":[-7.378,-4.73],"again_caps":[-8.225,-7.157],"againtomorrow":[-9.323,-8.661],"al":[-9.323,-8.661],"all":[-7.244,-5.15],"all_caps":[-8.63,-7.968],"an":[-6.684,-5.037],"and":[-3.903,-3.514],"and_caps":[-6.839,-6.097],"andit":[-9.323,-8.661],"anyone":[-8.63,-5.277],"anyone_caps":[-9.323,-7.968],"ap":[-9.323,-8.256],"app":[-5.047,-5.037],"app_caps":[-7.937,-7.052],"appcrashes":[-8.63,-9.355],"appy":[-9.323,-8.661],"arrivd":[-9.323,-8.661],"arrived":[-6.028,-4.889],"arrived_caps":[-7.244,-7.563],"arrved":[-8.63,-9.355],"as":[-8.225,-5.366],"asked":[-5.263,-8.661],"asked_caps":[-7.532,-9.355],"at":[-4.389,-4.645],"atlow":[-9.323,-8.661],"attery":[-8.63,-9.355],"avod":[-8.63,-9.355],"avoid":[-5.165,-7.968],"avoid_caps":[-8.225,-9.355],"awkward":[-7.378,-8.256],"awkward_caps":[-8.63,-9.355],"badly":[-7.244,-9.355],"batery":[-9.323,-8.661],"battery":[-4.917,-4.844],"battery_caps":[-7.378,-7.275],"battry":[-9.323,-8.661],"beautifully":[-9.323,-6.059],"best":[-8.63,-6.136],"best_caps":[-9.323,-8.661],"better":[-8.63,-5.744],"betterthan":[-9.323,-8.661],"blurry":[-5.263,-6.716],"blurry_caps":[-7.244,-8.661],"boke":[-9.323,-8.661],"bought":[-5.713,-5.403],"bought_caps":[-9.323,-7.745],"box":[-6.926,-9.355],"box_caps":[-8.63,-9.355],"brght":[-9.323,-8.661],"bright":[-6.759,-5.121],"bright_caps":[-8.63,-7.563],"briliant":[-9.323,-8.661],"brilliant":[-7.937,-7.745],"brilliant_caps":[-9.323,-8.661],"broke":[-5.991,-8.661],"broke_caps":[-8.225,-9.355],"broken":[-6.926,-9.355],"broken_caps":[-8.63,-9.355],"bst":[-9.323,-8.661],"bt":[-8.63,-9.355],"buil":[-9.323,-8.661],"build":[-6.926,-5.227],"build_caps":[-9.323,-7.563],"buildquality":[-9.323,-8.661],"but":[-4.404,-4.19],"button":[-7.532,-7.563],"button_caps":[-9.323,-8.661],"buy":[-7.532,-4.73],"buy_caps":[-8.63,-7.157],"cable":[-7.532,-7.275],"cable_caps":[-9.323,-8.661],"camera":[-4.993,-4.701],"camera_caps":[-7.126,-7.052],"camerais":[-8.63,-9.355],"cannot":[-5.213,-6.79],"cannot_caps":[-8.225,-9.355],"carry":[-6.49,-5.106],"carry_caps":[-9.323,-7.745],"cary":[-9.323,-8.661],"case":[-6.926,-7.275],"case_caps":[-8.63,-9.355],"cashes":[-8.63,-9.355],"charger":[-6.49,-7.409],"charger_caps":[-9.323,-8.661],"charging":[-4.954,-4.973],"charging_caps":[-7.244,-7.745],"cheap":[-4.905,-6.87],"cheap_caps":[-7.532,-9.355],"clunky":[-7.937,-8.256],"cmera":[-9.323,-8.661],"comfortable":[-8.63,-7.157],"comparig":[-9.323,-8.661],"comparing":[-6.065,-6.022],"comparing_caps":[-8.63,-9.355],"complete":[-6.232,-9.355],"complete_caps":[-8.225,-8.661],"crackle":[-8.63,-9.355],"crackles":[-5.213,-6.464],"crackles_caps":[-7.937,-9.355],"cracles":[-8.63,-9.355],"cramped":[-7.378,-9.355],"crashes":[-5.246,-6.79],"crashes_caps":[-8.63,-8.661],"crisp":[-8.225,-7.968],"d":[-9.323,-6.716],"da":[-9.323,-8.661],"daily":[-5.827,-6.177],"daily_caps":[-8.63,-7.968],"day":[-6.615,-4.464],"day_caps":[-7.714,-7.157],"dead":[-5.213,-6.582],"dead_caps":[-8.225,-9.355],"decribed":[-9.323,-8.661],"deepl":[-8.63,-9.355],"deeply":[-5.495,-7.968],"deeply_caps":[-7.937,-9.355],"deliery":[-8.63,-9.355],"delighted":[-9.323,-6.582],"deliver":[-9.323,-8.661],"delivery":[-4.929,-5.051],"delivery_caps":[-7.378,-7.563],"delivey":[-9.323,-8.661],"deply":[-8.63,-9.355],"described":[-8.63,-5.443],"described_caps":[-9.323,-7.968],"dies":[-5.149,-6.359],"dies_caps":[-7.532,-8.661],"diesin":[-8.63,-9.355],"dim":[-7.937,-7.745],"disappinted":[-8.63,-9.355],"disappoint":[-8.63,-7.052],"disappoint_caps":[-9.323,-8.661],"disappointed":[-6.105,-8.661],"disappointed_caps":[-8.63,-9.355],"dlivery_caps":[-9.323,-8.661],"do":[-5.316,-6.177],"does":[-5.075,-7.052],"does_caps":[-7.532,-9.355],"doesn":[-9.323,-8.661],"doesn't":[-8.63,-7.157],"doesn't_caps":[-9.323,-8.661],"doesnot":[-8.63,-9.355],"don't":[-8.63,-7.275],"dscribed":[-9.323,-8.661],"during":[-6.145,-6.059],"during_caps":[-8.225,-9.355],"dy":[-9.323,-8.661],"early":[-7.126,-5.135],"early_caps":[-7.937,-7.563],"easy":[-6.49,-5.092],"easy_caps":[-9.323,-7.745],"eautifully":[-9.323,-8.661],"ecommended":[-9.323,-8.661],"eeded":[-9.323,-8.661],"eels":[-9.323,-8.661],"eels_caps":[-8.63,-9.355],"eeply":[-8.63,-9.355],"enerous":[-9.323,-8.661],"etup":[-9.323,-8.661],"even":[-7.126,-4.924],"even_caps":[-8.63,-7.275],"ever":[-8.63,-9.355],"every":[-5.246,-5.593],"every_caps":[-8.63,-8.256],"exactly":[-8.225,-5.051],"exactly_caps":[-9.323,-7.275],"exctly":[-9.323,-8.661],"execution":[-6.615,-8.661],"expected":[-8.63,-5.717],"experience":[-5.827,-9.355],"experience_caps":[-8.63,-9.355],"fan":[-6.926,-7.745],"far":[-5.047,-6.957],"far_caps":[-7.378,-8.256],"fast":[-7.378,-5.064],"fast_caps":[-9.323,-7.968],"faulty":[-7.021,-9.355],"feel":[-8.225,-8.661],"feels":[-4.813,-5.051],"feels_caps":[-7.714,-7.563],"finish":[-7.244,-7.409],"fit":[-8.63,-9.355],"fits":[-7.021,-5.18],"fits_caps":[-8.63,-7.563],"fitsperfectly":[-9.323,-8.661],"five":[-8.63,-6.177],"five_caps":[-9.323,-8.256],"flimsy":[-7.714,-8.661],"for":[-4.835,-6.136],"for_caps":[-7.378,-7.968],"fora":[-8.63,-9.355],"fragile":[-7.378,-8.661],"fragile_caps":[-9.323,-8.661],"generous":[-8.63,-7.745],"generous_caps":[-8.63,-9.355],"genuinely":[-5.768,-5.463],"genuinely_caps":[-8.63,-8.661],"genuinelycharging":[-9.323,-8.661],"gla":[-9.323,-8.661],"glad":[-9.323,-6.136],"glad_caps":[-9.323,-7.745],"gnuinely":[-8.63,-9.355],"good":[-5.452,-5.165],"good_caps":[-8.63,-7.745],"great":[-7.126,-5.483],"great_caps":[-9.323,-7.968],"gret":[-9.323,-8.661],"ha":[-9.323,-8.661],"handy":[-7.937,-8.256],"happy":[-7.714,-5.037],"happy_caps":[-9.323,-7.275],"hapy":[-9.323,-8.256],"hard":[-5.213,-7.968],"hard_caps":[-7.714,-9.355],"hardly":[-8.63,-6.647],"has":[-5.229,-6.647],"has_caps":[-8.225,-9.355],"hate":[-8.63,-7.275],"have":[-6.145,-6.097],"have_caps":[-8.63,-9.355],"havy":[-8.63,-9.355],"he":[-8.63,-8.661],"heavy":[-5.047,-6.957],"heavy_caps":[-7.378,-8.256],"hghly":[-9.323,-8.661],"highl":[-9.323,-8.661],"highly":[-9.323,-5.329],"highly_caps":[-9.323,-8.256],"his":[-9.323,-8.661],"honestly":[-5.411,-6.022],"honestly_caps":[-8.63,-7.745],"hopeless":[-7.126,-8.256],"hopeless_caps":[-8.63,-9.355],"hor":[-9.323,-8.661],"hour":[-6.839,-5.064],"hour_caps":[-9.323,-7.968],"hours":[-5.134,-6.41],"hours_caps":[-7.532,-8.661],"hur":[-8.63,-9.355],"i":[-4.382,-3.899],"idea":[-6.615,-8.661],"ife":[-9.323,-8.661],"in":[-4.802,-5.641],"indoors":[-5.263,-6.647],"indoors_caps":[-7.378,-8.661],"indors":[-8.63,-9.355],"inoors_caps":[-8.63,-9.355],"is":[-3.477,-2.997],"isfar":[-8.63,-9.355],"isn't":[-9.323,-6.716],"isn't_caps":[-9.323,-8.661],"isn'tperfect":[-9.323,-8.661],"isuseless":[-9.323,-8.661],"it":[-3.32,-3.07],"itto":[-9.323,-8.661],"keyboard":[-7.126,-7.409],"keyboard_caps":[-9.323,-7.968],"last":[-5.713,-6.022],"lasts":[-7.378,-5.15],"lasts_caps":[-8.63,-7.968],"launch":[-5.213,-6.79],"launch_caps":[-8.63,-8.661],"light":[-6.49,-5.092],"light_caps":[-9.323,-7.745],"lo":[-8.63,-9.355],"looks":[-7.244,-9.355],"love":[-6.328,-5.526],"love_caps":[-9.323,-8.256],"lovely":[-8.63,-7.563],"low":[-5.196,-6.521],"low_caps":[-7.937,-9.355],"lurry":[-8.63,-8.661],"minues":[-9.323,-8.661],"minutes":[-7.378,-5.165],"minutes_caps":[-8.225,-7.968],"money":[-5.452,-9.355],"money_caps":[-7.937,-8.661],"month":[-5.713,-6.059],"more":[-6.028,-6.31],"more_caps":[-8.225,-7.968],"my":[-5.316,-5.403],"needed":[-8.63,-6.219],"needed_caps":[-9.323,-7.745],"never":[-4.418,-6.219],"never_caps":[-6.926,-8.661],"nice":[-6.926,-9.355],"nice_caps":[-8.63,-9.355],"night":[-7.126,-4.912],"night_caps":[-8.63,-7.275],"nightmare":[-5.134,-7.409],"nightmare_caps":[-7.937,-9.355],"nimpressed":[-8.63,-9.355],"no":[-8.225,-5.403],"noisy":[-7.714,-8.661],"noisy_caps":[-8.63,-9.355],"not":[-3.864,-6.059],"not_a":[-7.937,-9.355],"not_aain":[-8.63,-9.355],"not_again":[-4.614,-8.256],"not_again_caps":[-6.551,-9.355],"not_al":[-8.63,-9.355],"not_all":[-5.165,-5.244],"not_all_caps":[-7.378,-7.275],"not_an":[-9.323,-6.79],"not_and":[-6.232,-8.661],"not_and_caps":[-7.532,-9.355],"not_any":[-8.63,-6.647],"not_app":[-7.532,-9.355],"not_as":[-6.839,-8.661],"not_at":[-5.033,-5.135],"not_atall_caps":[-9.323,-8.661],"not_bad":[-8.63,-6.716],"not_bad_caps":[-9.323,-8.661],"not_battery":[-8.225,-9.355],"not_blurry":[-8.63,-9.355],"not_bu":[-8.63,-9.355],"not_buy":[-5.089,-9.355],"not_buy_caps":[-6.839,-9.355],"not_buyit":[-8.63,-9.355],"not_camera":[-8.63,-9.355],"not_caps":[-6.105,-8.256],"not_charging":[-8.225,-9.355],"not_cheap":[-8.225,-8.661],"not_complaints":[-8.225,-5.403],"not_complaints_caps":[-9.323,-7.275],"not_complaits":[-9.323,-8.661],"not_crackles":[-8.225,-9.355],"not_crackles_caps":[-8.63,-9.355],"not_crashes":[-7.532,-9.355],"not_dead":[-7.937,-9.355],"not_dead_caps":[-8.63,-9.355],"not_delivery":[-8.225,-9.355],"not_describd":[-8.63,-9.355],"not_described":[-7.021,-8.661],"not_described_caps":[-8.63,-9.355],"not_dies":[-8.225,-9.355],"not_do":[-7.021,-9.355],"not_does":[-8.63,-9.355],"not_does_caps":[-8.63,-9.355],"not_esitation":[-9.323,-8.661],"not_every":[-7.532,-9.355],"not_far":[-9.323,-7.745],"not_far_caps":[-9.323,-8.661],"not_fault":[-9.323,-6.79],"not_feels":[-8.225,-8.661],"not_fi":[-8.63,-9.355],"not_fit":[-5.213,-7.052],"not_fit_caps":[-7.378,-9.355],"not_had":[-9.323,-6.87],"not_had_caps":[-9.323,-8.661],"not_has":[-7.937,-9.355],"not_has_caps":[-8.63,-9.355],"not_hesitation":[-8.63,-5.403],"not_hesitation_caps":[-9.323,-8.256],"not_hestation":[-9.323,-8.661],"not_his":[-8.63,-9.355],"not_hours":[-8.225,-9.355],"not_in":[-8.225,-9.355],"not_indoors":[-8.63,-9.355],"not_is":[-8.63,-9.355],"not_issue":[-9.323,-6.957],"not_issue_caps":[-9.323,-8.661],"not_isue":[-9.323,-8.661],"not_it":[-4.375,-6.79],"not_launch":[-7.532,-9.355],"not_low":[-8.225,-9.355],"not_low_caps":[-8.63,-9.355],"not_never":[-8.63,-9.355],"not_nightmare_caps":[-8.225,-9.355],"not_not":[-8.63,-9.355],"not_not_caps":[-8.63,-9.355],"not_omplaints":[-8.63,-9.355],"not_on":[-7.532,-9.355],"not_overheats":[-8.225,-9.355],"not_pixels":[-7.937,-9.355],"not_pixels_caps":[-8.63,-9.355],"not_plastic":[-8.225,-8.661],"not_price":[-5.562,-8.256],"not_price_caps":[-7.714,-8.661],"not_problems":[-9.323,-7.563],"not_problems_caps":[-9.323,-8.661],"not_promise":[-8.63,-9.355],"not_promises":[-7.126,-9.355],"not_recomend":[-8.63,-9.355],"not_recommend":[-4.824,-8.661],"not_recommend_caps":[-7.532,-9.355],"not_replied":[-5.061,-7.052],"not_replied_caps":[-7.714,-9.355],"not_screen":[-7.937,-9.355],"not_screen_caps":[-8.63,-9.355],"not_setup_caps":[-8.225,-9.355],"not_so":[-9.323,-7.563],"not_sofar":[-9.323,-8.661],"not_sound":[-8.225,-9.355],"not_sound_caps":[-8.63,-9.355],"not_support":[-8.63,-9.355],"not_the":[-5.263,-7.968],"not_the_caps":[-7.378,-8.661],"not_this":[-6.188,-9.355],"not_this_caps":[-8.225,-9.355],"not_three":[-8.225,-9.355],"not_tis":[-8.63,-9.355],"not_took":[-8.225,-9.355],"not_two":[-8.225,-9.355],"not_volume":[-8.225,-9.355],"not_volume_caps":[-8.63,-9.355],"not_was_caps":[-8.225,-9.355],"not_weeks":[-8.225,-9.355],"not_what":[-7.244,-9.355],"not_whatit":[-8.63,-9.355],"not_while":[-8.225,-9.355],"not_wht":[-8.63,-9.355],"not_worth":[-5.316,-8.256],"not_worth_caps":[-7.714,-8.661],"notbuy_caps":[-8.63,-9.355],"notworth":[-8.63,-9.355],"nver":[-8.63,-9.355],"oerheats_caps":[-8.63,-9.355],"of":[-4.929,-5.384],"often":[-9.323,-8.661],"old":[-6.065,-5.987],"old_caps":[-8.63,-9.355],"on":[-5.213,-6.716],"one":[-4.98,-4.51],"one_caps":[-8.225,-7.563],"onevery":[-8.63,-9.355],"only":[-6.49,-9.355],"oo":[-8.63,-9.355],"ood":[-9.323,-8.661],"ordered":[-6.145,-6.059],"ordered_caps":[-8.225,-9.355],"original":[-6.328,-6.31],"original_caps":[-7.714,-9.355],"orks":[-8.63,-9.355],"our":[-8.63,-9.355],"out":[-5.28,-5.463],"out_caps":[-8.63,-7.745],"ove_caps":[-9.323,-8.661],"overheas":[-8.63,-9.355],"overheats":[-5.047,-7.157],"overheats_caps":[-7.378,-8.661],"overpriced":[-7.244,-8.661],"owned":[-6.145,-6.097],"owned_caps":[-8.63,-9.355],"packaging":[-6.145,-6.022],"packaging_caps":[-7.714,-8.661],"pckaging":[-8.63,-9.355],"perfect":[-9.323,-6.716],"perfect_caps":[-9.323,-8.661],"perfectl_caps":[-9.323,-8.661],"perfectly":[-7.021,-5.18],"perfectly_caps":[-8.63,-7.745],"pixel":[-8.63,-9.355],"pixels":[-5.229,-6.582],"pixels_caps":[-8.225,-9.355],"plasic":[-8.63,-9.355],"plastic":[-4.917,-6.87],"plastic_caps":[-7.532,-9.355],"pleased":[-8.63,-5.366],"pleased_caps":[-9.323,-7.745],"poor":[-5.18,-7.968],"poor_caps":[-7.937,-9.355],"pp":[-8.63,-9.355],"premium":[-7.532,-8.256],"premium_caps":[-9.323,-8.256],"price":[-4.98,-7.968],"price_caps":[-7.714,-9.355],"product":[-6.926,-9.355],"product_caps":[-8.63,-9.355],"purchase":[-5.991,-6.097],"purchase_caps":[-7.937,-8.661],"quality":[-6.926,-5.211],"quality_caps":[-9.323,-7.563],"quick":[-8.225,-7.409],"quick_caps":[-9.323,-8.661],"quiet":[-9.323,-7.968],"qulity":[-9.323,-8.661],"ready":[-8.63,-7.275],"really":[-5.686,-5.366],"really_caps":[-7.532,-7.409],"reallyhappy":[-9.323,-8.661],"realy":[-9.323,-8.256],"recmmend":[-9.323,-8.661],"recommend":[-5.149,-4.225],"recommend_caps":[-7.937,-6.957],"recommendat":[-8.63,-9.355],"recommended":[-9.323,-5.312],"recommended_caps":[-9.323,-8.661],"recommendit":[-9.323,-8.661],"recommnd":[-8.63,-9.355],"recommnded_caps":[-9.323,-8.661],"refund":[-5.263,-8.661],"refund_caps":[-7.532,-9.355],"regret":[-6.028,-9.355],"regret_caps":[-7.937,-9.355],"reliable":[-8.63,-8.661],"reliable_caps":[-9.323,-7.968],"replid":[-9.323,-8.661],"replied":[-6.759,-5.092],"replied_caps":[-9.323,-7.968],"responsive":[-7.532,-7.409],"responsive_caps":[-9.323,-8.661],"resposive":[-8.63,-9.355],"returned":[-6.188,-9.355],"returned_caps":[-8.225,-9.355],"rice":[-8.63,-9.355],"rough":[-7.532,-7.968],"rough_caps":[-8.63,-8.661],"rplied":[-9.323,-8.661],"rupee":[-9.323,-5.921],"rupee_caps":[-9.323,-8.661],"s":[-9.323,-8.256],"sae":[-9.323,-8.661],"sale":[-6.145,-6.097],"sale_caps":[-8.225,-9.355],"same":[-6.188,-9.355],"same_caps":[-8.225,-9.355],"save":[-6.028,-9.355],"save_caps":[-8.63,-9.355],"screen":[-4.967,-4.801],"screen_caps":[-7.937,-7.563],"screenhas":[-8.63,-9.355],"screenis":[-9.323,-8.661],"second":[-6.188,-6.097],"second_caps":[-8.63,-9.355],"secondone":[-8.63,-9.355],"seriouly":[-8.63,-9.355],"seriously":[-5.768,-5.617],"seriously_caps":[-7.937,-8.661],"setup":[-5.061,-5.078],"setup_caps":[-7.532,-7.968],"setupwas":[-8.63,-9.355],"shap":[-9.323,-8.661],"sharp":[-6.279,-4.331],"sharp_caps":[-8.225,-6.79],"sharpeven":[-9.323,-8.661],"simple":[-7.126,-5.294],"simple_caps":[-9.323,-7.409],"sluggish":[-7.021,-7.968],"smooth":[-7.532,-7.409],"smooth_caps":[-9.323,-8.661],"so":[-9.323,-5.953],"soid":[-8.63,-9.355],"solid":[-6.759,-5.106],"solid_caps":[-9.323,-7.409],"sound":[-4.941,-4.936],"sound_caps":[-7.714,-7.745],"speaker":[-7.126,-7.968],"speaker_caps":[-8.63,-9.355],"sriously":[-8.63,-9.355],"stand":[-7.532,-7.157],"stand_caps":[-8.63,-8.661],"star":[-6.065,-8.256],"stars":[-8.63,-6.219],"stars_caps":[-9.323,-8.256],"stnd":[-9.323,-8.661],"strs":[-9.323,-8.661],"sturdy":[-7.937,-7.275],"suport":[-8.63,-8.661],"support":[-4.954,-4.973],"support_caps":[-7.714,-7.968],"suppot":[-8.63,-9.355],"supprt":[-8.63,-9.355],"surpisingly":[-9.323,-8.661],"surprisingly":[-6.433,-5.196],"surprisingly_caps":[-8.63,-7.745],"surprisngly":[-9.323,-8.661],"te":[-8.63,-8.256],"ten":[-5.263,-4.801],"ten_caps":[-8.63,-7.157],"terible":[-8.63,-9.355],"terrible":[-5.495,-8.661],"terrible_caps":[-8.63,-9.355],"th":[-8.63,-9.355],"than":[-5.991,-5.312],"than_caps":[-8.225,-7.968],"the":[-2.839,-2.912],"the_caps":[-5.635,-5.504],"theapp":[-8.63,-9.355],"thebuild":[-9.323,-8.661],"thecamera":[-9.323,-8.661],"thekeyboard":[-8.63,-9.355],"thin":[-8.63,-9.355],"thing":[-6.551,-9.355],"this":[-4.614,-4.487],"this_caps":[-7.244,-7.157],"thre_caps":[-9.323,-8.661],"three":[-5.047,-7.157],"three_caps":[-7.937,-9.355],"to":[-4.596,-3.764],"tomorrow":[-7.714,-5.443],"tomorrow_caps":[-8.63,-7.409],"tomrrow":[-9.323,-8.661],"too":[-5.033,-6.957],"too_caps":[-7.532,-8.256],"took":[-4.954,-5.037],"took_caps":[-7.532,-7.745],"tookthree":[-8.63,-9.355],"torecommend_caps":[-8.63,-9.355],"touse":[-9.323,-8.661],"tree":[-8.63,-9.355],"two":[-4.689,-4.672],"two_caps":[-7.126,-7.275],"ue":[-9.323,-8.661],"uimpressed":[-8.63,-9.355],"unimpressed":[-5.473,-7.968],"unimpressed_caps":[-7.937,-9.355],"unreliable":[-7.532,-7.563],"unreliable_caps":[-9.323,-8.256],"upport":[-9.323,-8.661],"use":[-7.126,-5.329],"use_caps":[-9.323,-7.409],"used":[-5.827,-6.177],"used_caps":[-8.63,-7.968],"useless":[-8.225,-8.256],"uses":[-6.028,-6.31],"uses_caps":[-8.225,-7.968],"value":[-5.165,-5.423],"value_caps":[-7.937,-7.968],"ver":[-8.63,-9.355],"very":[-4.869,-5.294],"very_caps":[-7.714,-7.745],"vey":[-8.63,-9.355],"vlue":[-9.323,-8.661],"void":[-8.63,-9.355],"volume":[-5.18,-6.464],"volume_caps":[-7.937,-9.355],"vry":[-8.63,-9.355],"waned":[-8.63,-9.355],"wanted":[-6.379,-9.355],"was":[-5.149,-6.716],"was_caps":[-7.937,-9.355],"waste":[-6.232,-9.355],"waste_caps":[-8.225,-8.661],"wee":[-8.63,-9.355],"week":[-5.411,-8.256],"week_caps":[-7.714,-9.355],"weeks":[-4.689,-5.889],"weeks_caps":[-7.714,-7.745],"wees":[-8.63,-9.355],"weks":[-8.63,-9.355],"what":[-8.63,-6.177],"what_caps":[-9.323,-7.745],"while":[-5.033,-7.157],"while_caps":[-7.244,-8.661],"wife":[-6.028,-6.359],"wife_caps":[-8.225,-7.968],"wih":[-8.63,-9.355],"will":[-8.63,-5.423],"will_caps":[-9.323,-8.256],"willbuy":[-9.323,-8.661],"wit":[-8.63,-9.355],"with":[-6.145,-5.165],"with_caps":[-8.63,-8.256],"withi":[-8.63,-9.355],"within":[-5.686,-5.037],"within_caps":[-8.225,-7.968],"withn":[-8.63,-9.355],"without":[-8.63,-5.366],"without_caps":[-9.323,-8.256],"wo":[-8.63,-8.661],"works":[-7.378,-6.022],"worth":[-9.323,-5.921],"worth_caps":[-9.323,-8.661],"woud":[-9.323,-8.661],"would":[-4.917,-4.654],"would_caps":[-6.615,-7.052],"xp":[-5.768,-5.717],"year":[-8.63,-6.097],"year_caps":[-9.323,-8.661],"your":[-6.065,-9.355],"your_caps":[-8.63,-9.355],"zero":[-5.298,-8.661],"zero_caps":[-8.63,-9.355],"\ud83d\udc4d":[-9.323,-7.745],"\ud83d\udc4e":[-7.714,-9.355]};
+    const PRIOR = { negative: -0.6904840631404617, positive: -0.6958174091158242 };
+    const DEFAULT = { negative: -9.323490469908839, positive: -9.354613861132608 };
+
+    // === Tokeniser (ports src/sentiment/tokenize.py) ===
+    const NEGATORS = new Set(["not","no","never","none","cannot","cant","wont","dont","doesnt","didnt","isnt","arent","wasnt","werent","aint","hardly","barely","without","neither","nor"]);
+    const CLAUSE_END = new Set(["."," ",",","!","?",";",":","but","however","although","though","yet"]);
+    const KEEP_PUNCT = new Set(["!","?"]);
+    const STOPWORDS = new Set(["a","an","the","of","to","and","is","was","were","be","been","it","its","this","that","for","on","in","at","as","with","i","we","they","he","she"]);
+    const EMOTICON = /[:;=8xX][\-o\*']?[\)\]\(\[dDpP/\\|@oO3]/g;
+    const WORD = /[a-z0-9']+|[^\sa-z0-9']/gi;
+
+    function squeeze(word) {
+      return word.replace(/(.)\1{2,}/g, "$1$1");
+    }
+
+    function tokenize(text) {
+      text = String(text).normalize("NFKC");
+      const tokens = [];
+      let negating = false;
+      const rawTokens = [...text.matchAll(WORD)].map((m) => m[0])
+        .concat([...text.matchAll(EMOTICON)].map((m) => m[0]));
+      // EMOTICON global regex needs lastIndex reset
+      EMOTICON.lastIndex = 0;
+      for (const raw of rawTokens) {
+        const lower = raw.toLowerCase();
+        const isEmoticon = new RegExp(EMOTICON.source).test(raw);
+        if (CLAUSE_END.has(lower) || (lower.length === 1 && !/[a-z0-9]/.test(lower) && !isEmoticon)) {
+          negating = false;
+          if (KEEP_PUNCT.has(raw) || isEmoticon || /\p{S}/u.test(raw[0])) tokens.push(raw);
+          else if (/^[a-z]+$/i.test(lower)) tokens.push(lower);
+          continue;
+        }
+        let token = squeeze(lower.replace(/^'+|'+$/g, ""));
+        if (!token) continue;
+        if (raw === raw.toUpperCase() && raw.length > 2) token += "_caps";
+        tokens.push(negating ? "not_" + token : token);
+        if (NEGATORS.has(lower)) negating = true;
+      }
+      return tokens;
+    }
+
+    // === Naive Bayes (ports src/sentiment/model.py) ===
+    function logScores(text) {
+      const scores = { ...PRIOR };
+      const tokens = tokenize(text);
+      for (const tok of tokens) {
+        const row = LL[tok];
+        if (!row) continue;
+        scores.negative += row[0];
+        scores.positive += row[1];
+      }
+      return scores;
+    }
+    function predictProba(text) {
+      const scores = logScores(text);
+      const top = Math.max(scores.negative, scores.positive);
+      const eN = Math.exp(scores.negative - top);
+      const eP = Math.exp(scores.positive - top);
+      const total = eN + eP;
+      return { negative: eN / total, positive: eP / total, scores };
+    }
+    function explain(text) {
+      const tokens = tokenize(text);
+      const seen = new Set();
+      const rows = [];
+      for (const tok of tokens) {
+        if (seen.has(tok)) continue;
+        seen.add(tok);
+        const row = LL[tok];
+        if (!row) continue;
+        // weight = log P(tok|positive) - log P(tok|negative)
+        const w = row[1] - row[0];
+        rows.push({ tok, w });
+      }
+      rows.sort((a, b) => Math.abs(b.w) - Math.abs(a.w));
+      return { rows, tokens };
+    }
+
+    // === UI ===
+    const textEl = document.getElementById("text");
+    function render() {
+      const text = textEl.value;
+      if (!text.trim()) {
+        document.getElementById("prob").textContent = "—";
+        document.getElementById("contribs").innerHTML = `<li class="muted">Type something above.</li>`;
+        return;
+      }
+      const { negative, positive, scores } = predictProba(text);
+      const label = positive >= negative ? "positive" : "negative";
+      const conf = label === "positive" ? positive : negative;
+
+      const badge = document.getElementById("label");
+      badge.textContent = label;
+      badge.className = "badge " + label;
+      document.getElementById("prob").textContent = (conf * 100).toFixed(1) + "%";
+      document.getElementById("barNeg").style.width = (negative * 100) + "%";
+      document.getElementById("barPos").style.width = (positive * 100) + "%";
+      document.getElementById("scores").textContent =
+        `log P(neg)=${scores.negative.toFixed(2)}  log P(pos)=${scores.positive.toFixed(2)}`;
+
+      const { rows, tokens } = explain(text);
+      const maxAbs = Math.max(...rows.map((r) => Math.abs(r.w)), 0.01);
+      document.getElementById("contribs").innerHTML = rows.length
+        ? rows.slice(0, 12).map((r) => {
+            const pct = (Math.abs(r.w) / maxAbs) * 50;
+            const isPos = r.w >= 0;
+            const style = isPos
+              ? `left:50%;width:${pct}%;background:var(--good)`
+              : `right:50%;width:${pct}%;background:var(--bad)`;
+            const toward = isPos ? "positive" : "negative";
+            return `<li>
+              <span class="tok" title="${r.tok}">${escapeHtml(r.tok)}</span>
+              <span class="track"><span class="mid"></span><i style="${style}"></i></span>
+              <span class="w ${isPos ? "pos" : "neg"}">${isPos ? "+" : ""}${r.w.toFixed(2)}</span>
+            </li>`;
+          }).join("")
+        : `<li class="muted">No in-vocabulary tokens — the model has nothing to score.</li>`;
+
+      const unknown = [...new Set(tokens.filter((t) => !LL[t]))];
+      const note = document.getElementById("tokNote");
+      note.innerHTML = `${tokens.length} token(s) after tokenisation · ${rows.length} in vocabulary · ` +
+        (unknown.length ? `ignored unknown: ${unknown.slice(0, 8).map(escapeHtml).join(", ")}${unknown.length > 8 ? "…" : ""}` : "all tokens in vocabulary") +
+        ` · predicted <strong>${label}</strong> at ${(conf * 100).toFixed(1)}% (softmax over log-scores).`;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    textEl.addEventListener("input", render);
+    document.getElementById("runBtn").addEventListener("click", render);
+    document.getElementById("examples").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-t]");
+      if (!btn) return;
+      textEl.value = btn.getAttribute("data-t");
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>
