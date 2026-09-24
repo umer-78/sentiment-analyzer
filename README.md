@@ -1,5 +1,7 @@
 # Sentiment Analyzer
 
+**Live demo:** https://umer-78.github.io/sentiment-analyzer/
+
 [![CI](https://github.com/umer-78/sentiment-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/umer-78/sentiment-analyzer/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
