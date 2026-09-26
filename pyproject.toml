@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sentiment"
+name = "sentiment-analyzer"
 version = "1.0.0"
-description = "Sentiment analysis: a Naive Bayes classifier written from scratch, benchmarked against scikit-learn."
+description = "Naive Bayes sentiment classifier written from scratch, with a review-aware tokeniser, per-prediction explanations and a scikit-learn benchmark."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Umer Hashmi" }]
