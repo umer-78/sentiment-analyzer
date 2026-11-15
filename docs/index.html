@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-scene="ml" data-fx-compact="">
+<html lang="en" data-scene="scale" data-fx-compact="" data-look="quicksand" data-hero="band" data-card="solid" data-motif="plain" data-backdrop="dust">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,8 +10,8 @@
   <meta property="og:url" content="https://umer-78.github.io/sentiment-analyzer/">
   <meta name="twitter:card" content="summary">
   <meta name="description" content="Type a review and watch a from-scratch Naive Bayes classifier break down every word's contribution to the positive/negative decision.">
-  <meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0a0c10" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#b84b94" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#160c12" media="(prefers-color-scheme: dark)">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%232563eb'/><stop offset='1' stop-color='%237c3aed'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><text x='16' y='22' font-size='14' text-anchor='middle' fill='white' font-family='system-ui' font-weight='bold'>:)</text></svg>">
   <style>
     :root {
@@ -353,7 +353,7 @@ html.mk-pre header.top, html.mk-pre main section, html.mk-pre section.card, html
 <script>(function(){try{if(!(matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){var r=document.documentElement;r.classList.add('mk-pre');setTimeout(function(){r.classList.remove('mk-pre')},2200)}}catch(e){}})();</script>
 <!-- /motion-kit:head -->
 <!-- fx:v2 -->
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&family=Mulish:wght@400;500;600&family=Fira+Code:wght@400;600&display=swap" id="fx-fonts">
 <link rel="stylesheet" href="fx.css">
 <style>:root { --fx-2: #06b6d4; --fx-3: #f59e0b; }</style>
 <!-- /fx:v2 -->
@@ -367,6 +367,11 @@ html.mk-pre header.top, html.mk-pre main section, html.mk-pre section.card, html
 <meta property="og:image:alt" content="sentiment — Interactive Naive Bayes Sentiment Demo: the live demo">
 <meta name="twitter:card" content="summary_large_image">
 <!-- /og -->
+<style id="fx-look">:root[data-look] { --font: 'Mulish', system-ui, -apple-system, "Segoe UI", sans-serif; --fx-display: 'Quicksand', system-ui, sans-serif; --mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --fx-display-weight: 700; --fx-tracking: -0.02em; --fx-title-case: none; --fx-radius: 22px; --fx-hero-radius: 30px; --fx-control-radius: 999px; --accent: #b84b94; --accent-hover: #a43882; --accent-soft: #ffecf6; --accent-glow: rgb(184 75 148 / 0.16); --on-accent: #ffffff; --fx-2: #0d9e6e; --fx-3: #ec7b38; --bg: #fff6fb; --bg-elevated: #fffdfe; --surface: #fffefe; --surface-2: #fbf0f6; --surface-3: #f3e7ee; --border: #e7dae1; --border-strong: #cebfc8; --line: #e7dae1; }
+@media (prefers-color-scheme: dark) { :root[data-look]:not([data-theme="light"]) { --accent: #e378bd; --accent-hover: #f290ce; --accent-soft: rgb(227 120 189 / 0.14); --accent-glow: rgb(227 120 189 / 0.2); --on-accent: #1b0c15; --fx-2: #48cc96; --fx-3: #fea575; --bg: #160c12; --bg-elevated: #1d1219; --surface: #21151c; --surface-2: #2a1d25; --surface-3: #34272f; --border: #382c33; --border-strong: #4a3e45; --line: #382c33; } }
+:root[data-look][data-theme="dark"] { --accent: #e378bd; --accent-hover: #f290ce; --accent-soft: rgb(227 120 189 / 0.14); --accent-glow: rgb(227 120 189 / 0.2); --on-accent: #1b0c15; --fx-2: #48cc96; --fx-3: #fea575; --bg: #160c12; --bg-elevated: #1d1219; --surface: #21151c; --surface-2: #2a1d25; --surface-3: #34272f; --border: #382c33; --border-strong: #4a3e45; --line: #382c33; }</style>
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js" data-fx>
+<link rel="modulepreload" href="fx3d.js" data-fx>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>

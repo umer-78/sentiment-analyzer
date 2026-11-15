@@ -157,3 +157,66 @@ button.fx-reset:hover:not(:disabled) svg { transform: rotate(-70deg); }
 :root .fx-step button:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 :root .fx-step button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fx-step-pos { min-width: 50px; text-align: center; font: 600 12px/1 var(--mono, ui-monospace, monospace); color: var(--muted, inherit); font-variant-numeric: tabular-nums; }
+
+/* fx-look:start
+   Each project has its own look: fonts, palette, corner shape, hero layout, page backdrop and card style.
+   The page names them on <html data-look data-hero data-card data-motif data-backdrop>, and its values live
+   in the page's <style id="fx-look">. These rules read them; they are the same in every project. */
+:root[data-look] body { font-family: var(--font); }
+:root[data-look] :is(h1, h2, h3, .fx-title) { font-family: var(--fx-display); font-weight: var(--fx-display-weight); letter-spacing: var(--fx-tracking); }
+:root[data-look] :is(h2, h3) { font-family: var(--fx-h2-font, var(--fx-display)); font-weight: var(--fx-h2-weight, var(--fx-display-weight)); }
+:root[data-look] .fx-hero > h1 { font-size: calc(clamp(34px, 5.6vw, 64px) * var(--fx-title-scale, 1)); line-height: var(--fx-title-lh, 1.06); text-transform: var(--fx-title-case); }
+:root[data-look] header.top.fx-hero > .brand h1 { font-size: calc(clamp(28px, 4.2vw, 46px) * var(--fx-title-scale, 1)); line-height: var(--fx-title-lh, 1.08); text-transform: var(--fx-title-case); }
+:root[data-look] :is(code, pre, kbd, samp, .mono) { font-family: var(--mono); }
+:root[data-look] .fx-hero { border-radius: var(--fx-hero-radius); }
+:root[data-look] .card { border-radius: var(--fx-radius); }
+:root[data-look] .btn { border-radius: var(--fx-control-radius); }
+
+/* cards and the hero panel, one family of styles per project */
+:root[data-card="outline"] .card { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: 1px solid color-mix(in srgb, var(--text, #111) 20%, transparent); }
+:root[data-card="outline"] .fx-hero { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-card="solid"] .card { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 1px 2px rgb(0 0 0 / .06); border: 1px solid var(--border, var(--line)); }
+:root[data-card="solid"] .fx-hero { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-card="raised"] .card { border-color: transparent; box-shadow: 0 26px 50px -30px color-mix(in srgb, var(--accent) 60%, transparent), 0 2px 8px -3px rgb(0 0 0 / .14); }
+:root[data-card="raised"] .fx-hero { box-shadow: 0 40px 90px -45px color-mix(in srgb, var(--accent) 70%, transparent); }
+:root[data-card="brutal"] .card { background: var(--surface); border: 2px solid var(--text, #111); box-shadow: 6px 6px 0 var(--accent); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-card="brutal"] .fx-hero { background: var(--surface); border: 2px solid var(--text, #111); box-shadow: 9px 9px 0 var(--accent); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-card="brutal"] .fx-hero::before { display: none; }
+:root[data-card="brutal"] .btn { border-width: 2px; }
+:root[data-card="tint"] .card { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 24%, transparent); }
+:root[data-card="tint"] .fx-hero { background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 11%, var(--surface)), color-mix(in srgb, var(--fx-2) 9%, var(--surface))); }
+:root[data-card="rail"] .card { border-left: 4px solid var(--accent); }
+:root[data-card="rail"] .fx-hero { border-left: 6px solid var(--accent); }
+:root[data-card="glass"] .card { background: color-mix(in srgb, var(--surface) 58%, transparent); -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%); border: 1px solid color-mix(in srgb, #fff 22%, transparent); box-shadow: 0 1px 0 rgb(255 255 255 / .12) inset, 0 18px 40px -30px rgb(0 0 0 / .4); }
+:root[data-card="soft"] .card { border-color: transparent; background: color-mix(in srgb, var(--accent) 4%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 13%, transparent), 0 14px 32px -24px rgb(0 0 0 / .35); }
+:root[data-card="soft"] .fx-hero { border-color: transparent; }
+
+/* where the 3D scene sits in the hero; phones always show it as a banner above the text */
+@media (min-width: 761px) {
+  html[data-hero="right"] .fx-hero:not(.top) > :not(.fx-scene) { max-width: min(560px, 50%); }
+  html[data-hero="right"] .fx-hero .fx-scene { -webkit-mask-image: linear-gradient(90deg, transparent 3%, #000 24%); mask-image: linear-gradient(90deg, transparent 3%, #000 24%); }
+  html[data-hero="left"] :is(.fx-hero, header.top.fx-hero) { padding-left: calc(48% + var(--pad)); }
+  html[data-hero="left"] .fx-hero > :not(.fx-scene), html[data-hero="left"] header.top.fx-hero > :is(.brand, .actions), html[data-hero="left"] header.top.fx-hero .fx-tags { max-width: 100%; }
+  html[data-hero="left"] .fx-hero .fx-scene { inset: 0 36% 0 0; -webkit-mask-image: linear-gradient(270deg, transparent 3%, #000 24%); mask-image: linear-gradient(270deg, transparent 3%, #000 24%); }
+  html[data-hero="left"][data-fx-compact] .fx-hero .fx-scene { inset: 0 44% 0 0; }
+  html[data-hero="band"] :is(.fx-hero, header.top.fx-hero) { padding-top: calc(var(--pad) + 270px); justify-content: flex-start; }
+  html[data-hero="band"] .fx-hero > :not(.fx-scene), html[data-hero="band"] header.top.fx-hero > :is(.brand, .actions), html[data-hero="band"] header.top.fx-hero .fx-tags { max-width: min(820px, 100%); }
+  html[data-hero="band"] .fx-hero .fx-scene, html[data-hero="band"][data-fx-compact] .fx-hero .fx-scene { inset: 0 0 auto 0; height: 320px; -webkit-mask-image: linear-gradient(180deg, #000 74%, transparent); mask-image: linear-gradient(180deg, #000 74%, transparent); }
+  html[data-hero="center"] :is(.fx-hero, header.top.fx-hero) { align-items: center; text-align: center; padding-bottom: calc(var(--pad) + 270px); justify-content: flex-start; }
+  html[data-hero="center"] .fx-hero > :not(.fx-scene), html[data-hero="center"] header.top.fx-hero > :is(.brand, .actions), html[data-hero="center"] header.top.fx-hero .fx-tags { max-width: min(760px, 100%); }
+  html[data-hero="center"] header.top.fx-hero > .brand { flex-direction: column; text-align: center; }
+  html[data-hero="center"] :is(.fx-hero .links, header.top.fx-hero > .actions) { justify-content: center; }
+  html[data-hero="center"] .fx-hero .fx-scene, html[data-hero="center"][data-fx-compact] .fx-hero .fx-scene { inset: auto 0 0 0; height: 310px; -webkit-mask-image: linear-gradient(0deg, #000 74%, transparent); mask-image: linear-gradient(0deg, #000 74%, transparent); }
+}
+
+/* the page behind everything */
+:root[data-motif="grid"] .fx-bg b { background-image: linear-gradient(color-mix(in srgb, var(--text, #111) 8%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--text, #111) 8%, transparent) 1px, transparent 1px); background-size: 46px 46px; }
+:root[data-motif="lines"] .fx-bg b { background-image: repeating-linear-gradient(180deg, color-mix(in srgb, var(--text, #111) 7%, transparent) 0 1px, transparent 1px 30px); background-size: auto; }
+:root[data-motif="diag"] .fx-bg b { background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent) 13%, transparent) 0 1px, transparent 1px 16px); background-size: auto; }
+:root[data-motif="rings"] .fx-bg b { background-image: repeating-radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--accent) 14%, transparent) 0 1px, transparent 1px 38px); background-size: auto; }
+:root[data-motif="topo"] .fx-bg b { background-image: repeating-radial-gradient(ellipse 60% 40% at 15% 25%, color-mix(in srgb, var(--fx-2) 15%, transparent) 0 1px, transparent 1px 24px), repeating-radial-gradient(ellipse 50% 60% at 85% 75%, color-mix(in srgb, var(--accent) 13%, transparent) 0 1px, transparent 1px 28px); background-size: auto; }
+:root[data-motif="noise"] .fx-bg b { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 160px 160px; opacity: .3; }
+@media (prefers-color-scheme: dark) { :root[data-motif="noise"]:not([data-theme="light"]) .fx-bg b { filter: invert(1); opacity: .14; } }
+:root[data-motif="plain"] .fx-bg b { background-image: none; }
+:root[data-motif="plain"] .fx-bg i { opacity: .12; }
+/* fx-look:end */
