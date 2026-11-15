@@ -219,4 +219,31 @@ button.fx-reset:hover:not(:disabled) svg { transform: rotate(-70deg); }
 @media (prefers-color-scheme: dark) { :root[data-motif="noise"]:not([data-theme="light"]) .fx-bg b { filter: invert(1); opacity: .14; } }
 :root[data-motif="plain"] .fx-bg b { background-image: none; }
 :root[data-motif="plain"] .fx-bg i { opacity: .12; }
+/* the scene follows the reader in a corner window once the hero scrolls away (wide screens only) */
+.fx-pip { position: fixed; left: 18px; bottom: 18px; z-index: 60; width: 200px; height: 130px; border-radius: 16px; overflow: hidden; cursor: pointer; isolation: isolate;
+  background: color-mix(in srgb, var(--surface, #fff) 70%, transparent); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); box-shadow: 0 26px 50px -26px color-mix(in srgb, var(--accent) 60%, transparent), 0 2px 10px rgb(0 0 0 / .12);
+  opacity: 0; transform: translateY(18px) scale(.94); transition: opacity .45s var(--fx-ease, ease), transform .45s var(--fx-ease, ease); }
+.fx-pip.on { opacity: 1; transform: none; }
+.fx-pip:hover { transform: translateY(-2px); }
+.fx-pip .fx-scene { position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important; margin: 0 !important; order: 0; -webkit-mask-image: none !important; mask-image: none !important; }
+.fx-pip button { position: absolute; top: 7px; right: 7px; z-index: 2; width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--text, #111) 12%, transparent); color: var(--text, #111); font: 600 15px/1 system-ui, sans-serif; cursor: pointer; opacity: 0; transition: opacity .2s; }
+.fx-pip:hover button, .fx-pip button:focus-visible { opacity: 1; }
+body:has(input:focus, textarea:focus, select:focus, [contenteditable]:focus) .fx-pip { opacity: 0; pointer-events: none; }
+@media (max-width: 1359px), (pointer: coarse) { .fx-pip { display: none; } }
+@media print { .fx-pip { display: none; } }
+
+/* sections rise into place in depth as they scroll in; a panel in use glows in the project's colour */
+:root[data-look] .fx-reveal { transform: perspective(1100px) translateY(30px) rotateX(9deg) scale(.985); transform-origin: 50% 0; }
+:root[data-look] .fx-reveal.fx-in { transform: none; }
+:root[data-look] .card:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent), 0 22px 44px -26px color-mix(in srgb, var(--accent) 65%, transparent); transition: box-shadow .35s, border-color .35s; }
+:root[data-card="brutal"] .card:focus-within { box-shadow: 8px 8px 0 var(--accent); }
+/* the page pattern drifts slowly */
+:root[data-look]:not([data-motif="plain"]):not([data-motif="noise"]) .fx-bg b { animation: fx-pan 90s linear infinite; }
+:root[data-motif="grid"] .fx-bg b { --fx-pan: 46px 46px; }
+:root[data-motif="dots"] .fx-bg b { --fx-pan: 22px 22px; }
+@keyframes fx-pan { from { background-position: 0 0; } to { background-position: var(--fx-pan, 0 240px); } }
+@media (prefers-reduced-motion: reduce) { :root[data-look] .fx-bg b { animation: none !important; } :root[data-look] .fx-reveal { transform: none; } }
+.fx-still .fx-bg b { animation-play-state: paused; }
 /* fx-look:end */

@@ -132,6 +132,7 @@ export function mount(host, kind = 'ml') {
   // the field behind the scene; each project picks its own on <html data-backdrop>
   const look = document.documentElement.dataset, back = look.backdrop || 'motes', hero = look.hero || 'right';
   const field = new THREE.Group(), drift = [];
+  let pip = false, shell = null;   // the corner window the scene moves to once the hero scrolls away
   scene.add(field);
   const fade = (pairs, c, alphas) => {   // line pairs whose ends fade out with distance
     const g = new THREE.BufferGeometry().setFromPoints(pairs.flat().map(vec)), col = new Float32Array(alphas.length * 4);
@@ -226,8 +227,9 @@ export function mount(host, kind = 'ml') {
     camera.updateProjectionMatrix();
     // the part of the canvas no text covers, in canvas pixels
     let x0 = 0, x1 = w, y0 = 0, y1 = h;
-    const c = box.getBoundingClientRect(), q = innerWidth > 760 && words();
-    if (innerWidth <= 760) y1 = h * 0.82;   // a phone banner fades out at its foot
+    const c = box.getBoundingClientRect(), q = !pip && innerWidth > 760 && words();
+    if (pip) { /* the corner window is all scene */ }
+    else if (innerWidth <= 760) y1 = h * 0.82;   // a phone banner fades out at its foot
     else if (q && hero === 'left') x1 = Math.min(w, q.l - c.left - 20);
     else if (q && hero === 'band') y1 = Math.min(h, q.t - c.top - 6);
     else if (q && hero === 'center') y0 = Math.max(0, q.b - c.top + 6);
@@ -251,7 +253,7 @@ export function mount(host, kind = 'ml') {
   const still = () => reduce || document.documentElement.classList.contains('fx-still');
   function frame(now) {
     raf = 0;
-    if (stopped || !visible || document.hidden) return;
+    if (stopped || (!visible && !pip) || document.hidden) return;
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));   // a frame stamp can predate performance.now()
     last = now;
     if (!still()) t += dt;
@@ -263,9 +265,32 @@ export function mount(host, kind = 'ml') {
     renderer.render(scene, camera);
     if (!still()) raf = requestAnimationFrame(frame);
   }
-  const wake = () => { if (!stopped && visible && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); } };
+  const wake = () => { if (!stopped && (visible || pip) && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); } };
   addEventListener('fx:motion', wake);
-  new IntersectionObserver(([e]) => { visible = e.isIntersecting; wake(); }).observe(host);
+  // once the hero scrolls away on a wide screen, the scene follows the reader in a small window at the corner
+  const roomy = matchMedia('(min-width: 1360px) and (pointer: fine)');
+  let dismissed = false;
+  try { dismissed = sessionStorage.getItem('fx:pip') === 'off'; } catch { /* storage blocked */ }
+  const dock = (on) => {
+    if (on === pip || stopped) return;
+    if (on && !shell) {
+      shell = document.createElement('div');
+      shell.className = 'fx-pip';
+      shell.title = 'Back to the top';
+      shell.innerHTML = '<button type="button" aria-label="Close the 3D window">&times;</button>';
+      shell.addEventListener('click', (ev) => {
+        if (ev.target.closest('button')) { dismissed = true; try { sessionStorage.setItem('fx:pip', 'off'); } catch { /* storage blocked */ } dock(false); return; }
+        host.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      });
+      document.body.append(shell);
+    }
+    pip = on;
+    if (on) { shell.prepend(box); requestAnimationFrame(() => shell.classList.add('on')); }
+    else { shell?.classList.remove('on'); host.prepend(box); }
+    fit();
+    wake();
+  };
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; dock(!visible && roomy.matches && !dismissed); wake(); }).observe(host);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
   raf = requestAnimationFrame((n) => { frame(n); box.classList.add('on'); });
   return {
@@ -278,6 +303,7 @@ export function mount(host, kind = 'ml') {
       renderer.dispose();
       renderer.forceContextLoss?.();
       box.remove();
+      shell?.remove();
     },
   };
 }
