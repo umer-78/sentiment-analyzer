@@ -36,15 +36,44 @@ export function mount(host, kind = 'ml') {
   camera.position.set(0, 0, 9);
   const A = css('--accent', '#6366f1'), B = css('--fx-2', '#06b6d4'), C = css('--fx-3', '#f59e0b');
   const BAD = new THREE.Color(night ? '#ff6b6b' : '#dc2626'), INK = new THREE.Color(night ? '#e5e7eb' : '#334155');
-  scene.add(new THREE.HemisphereLight(0xffffff, night ? 0x1b2030 : 0x9aa3b5, night ? 1.0 : 1.25));
-  const key = new THREE.DirectionalLight(0xffffff, 1.4);
+  // weaker devices skip the costlier touches: clear-coated materials and the light that follows the pointer
+  const lite = innerWidth < 760 || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  // a small painted studio for reflections (soft boxes above and to the sides), so glossy parts catch light
+  // the way a product shot does; it is tiny, so turning it into an environment map costs next to nothing
+  {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 64;
+    const g = c.getContext('2d'), sky = g.createLinearGradient(0, 0, 0, 64);
+    sky.addColorStop(0, night ? '#2a3040' : '#f4f6fa');
+    sky.addColorStop(0.5, night ? '#11141b' : '#b8bec8');
+    sky.addColorStop(1, night ? '#050608' : '#5b616b');
+    g.fillStyle = sky;
+    g.fillRect(0, 0, 128, 64);
+    const soft = (x, y, rx, ry, a) => { const r = g.createRadialGradient(x, y, 0, x, y, rx); r.addColorStop(0, `rgba(255,255,255,${a})`); r.addColorStop(1, 'rgba(255,255,255,0)'); g.save(); g.translate(x, y); g.scale(1, ry / rx); g.translate(-x, -y); g.fillStyle = r; g.fillRect(x - rx, y - rx, rx * 2, rx * 2); g.restore(); };
+    soft(64, 8, 30, 9, 1);
+    soft(20, 26, 12, 16, night ? 0.75 : 0.9);
+    soft(104, 30, 10, 14, night ? 0.55 : 0.7);
+    const env = new THREE.CanvasTexture(c);
+    env.mapping = THREE.EquirectangularReflectionMapping;
+    env.colorSpace = THREE.SRGBColorSpace;
+    scene.environment = env;
+    scene.environmentIntensity = night ? 0.9 : 1.1;
+  }
+  scene.add(new THREE.HemisphereLight(0xffffff, night ? 0x1b2030 : 0x9aa3b5, night ? 0.55 : 0.7));
+  const key = new THREE.DirectionalLight(0xffffff, 1.15);
   key.position.set(4, 6, 8);
   scene.add(key);
-  const root = new THREE.Group();
-  scene.add(root);
+  // the scene's own group sits on a stage: the stage carries the fit beside the text, the build-in and the scroll depth
+  const stage = new THREE.Group(), root = new THREE.Group();
+  scene.add(stage);
+  stage.add(root);
   // a soft glow for halos; on a light page, particles get a firmer dot so they read against white
   const tex = glowTexture([[0, 1], [0.22, 0.75], [0.5, 0.18], [1, 0]]), dot = night ? tex : glowTexture([[0, 1], [0.42, 0.95], [0.68, 0.4], [1, 0]]), blend = night ? THREE.AdditiveBlending : THREE.NormalBlending;
-  const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, metalness: 0.2, emissive: c, emissiveIntensity: night ? 0.35 : 0.08, ...o });
+  const std = (c, o = {}) => lite
+    ? new THREE.MeshStandardMaterial({ color: c, roughness: 0.32, metalness: 0.15, emissive: c, emissiveIntensity: night ? 0.3 : 0.06, ...o })
+    : new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.26, metalness: 0.1, clearcoat: 0.85, clearcoatRoughness: 0.16, emissive: c, emissiveIntensity: night ? 0.22 : 0.04, ...o });
   const line = (c, opacity = 0.35) => new THREE.LineBasicMaterial({ color: c, transparent: true, opacity, depthWrite: false });
   const glowMat = (c, size, opacity = 1) => new THREE.PointsMaterial({ color: c, size, map: dot, transparent: true, opacity, depthWrite: false, blending: blend, sizeAttenuation: true });
   const sprite = (c, s, opacity = 0.9) => { const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: c, transparent: true, opacity, depthWrite: false, blending: blend })); m.scale.setScalar(s); return m; };
@@ -209,6 +238,8 @@ export function mount(host, kind = 'ml') {
   span.getCenter(mid);
   span.getSize(size);
   const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  let fitS = 1;
+  const fitP = new THREE.Vector3();
   const words = () => {   // the box the hero's text occupies, in page pixels
     let r = null;
     for (const el of host.children) {
@@ -239,8 +270,8 @@ export function mount(host, kind = 'ml') {
     const u = (2 * camera.position.z * half) / h;   // world units per canvas pixel where the scene stands
     const deep = 1.08 + size.z / (2 * camera.position.z);   // margin for tilt, plus near parts drawn larger
     const s = Math.max(0.5, Math.min(1.35, ((x1 - x0) * u - 0.4) / (size.x * deep + 1e-3), ((y1 - y0) * u - 0.4) / (size.y * deep + 1e-3)));
-    root.scale.setScalar(s);
-    root.position.set(((x0 + x1) / 2 - w / 2) * u - mid.x * s, (h / 2 - (y0 + y1) / 2) * u - mid.y * s, -mid.z * s);
+    fitS = s;
+    fitP.set(((x0 + x1) / 2 - w / 2) * u - mid.x * s, (h / 2 - (y0 + y1) / 2) * u - mid.y * s, -mid.z * s);
   };
   const ro = new ResizeObserver(() => fit());
   ro.observe(box);
@@ -248,7 +279,20 @@ export function mount(host, kind = 'ml') {
   document.fonts?.ready.then(fit);
   fit();
   const aim = { x: 0, y: 0 };
-  addEventListener('pointermove', (e) => { aim.x = (e.clientY / innerHeight - 0.5) * 0.35; aim.y = (e.clientX / innerWidth - 0.5) * 0.5; }, { passive: true });
+  const ptr = { x: 0, y: 0, live: false };   // the pointer over the canvas, from -1 to 1
+  addEventListener('pointermove', (e) => {
+    aim.x = (e.clientY / innerHeight - 0.5) * 0.35;
+    aim.y = (e.clientX / innerWidth - 0.5) * 0.5;
+    if (e.pointerType !== 'mouse') return;
+    const r = box.getBoundingClientRect();
+    ptr.x = ((e.clientX - r.left) / Math.max(1, r.width)) * 2 - 1;
+    ptr.y = 1 - ((e.clientY - r.top) / Math.max(1, r.height)) * 2;
+    ptr.live = Math.abs(ptr.x) < 1.3 && Math.abs(ptr.y) < 1.3;
+  }, { passive: true });
+  // a soft light follows the pointer across the scene and shows up the glossy parts; with no pointer it drifts on its own
+  const glint = lite ? null : new THREE.PointLight(0xffffff, night ? 16 : 11, 10, 2);
+  if (glint) { glint.position.set(2, 1, 3); scene.add(glint); }
+  let born = 0;
   let raf = 0, visible = true, last = performance.now(), stopped = false;
   const still = () => reduce || document.documentElement.classList.contains('fx-still');
   function frame(now) {
@@ -260,6 +304,19 @@ export function mount(host, kind = 'ml') {
     const step = still() ? 0 : dt;
     for (const f of tick) f(t, step);
     for (const f of drift) f(t, step);
+    // the scene builds itself in, then recedes and tilts away as the hero scrolls up
+    if (!born) born = now;
+    const k = still() ? 1 : Math.min(1, (now - born) / 1300), e = 1 - Math.pow(1 - k, 3);
+    let p = 0;
+    if (!pip) { const r = host.getBoundingClientRect(); p = Math.max(0, Math.min(1, -r.top / Math.max(1, r.height))); }
+    stage.scale.setScalar(fitS * (0.8 + 0.2 * e));
+    stage.position.set(fitP.x, fitP.y - (1 - e) * 0.8, fitP.z - p * 2.4);
+    stage.rotation.set(p * 0.32, (1 - e) * -0.7, 0);
+    if (glint) {
+      const gx = ptr.live ? ptr.x * 4.6 : Math.cos(t * 0.35) * 3.2, gy = ptr.live ? ptr.y * 2.6 : Math.sin(t * 0.27) * 1.8;
+      glint.position.x += (gx - glint.position.x) * 0.08;
+      glint.position.y += (gy - glint.position.y) * 0.08;
+    }
     scene.rotation.x += (aim.x - scene.rotation.x) * 0.04;
     scene.rotation.y += (aim.y - scene.rotation.y) * 0.04;
     renderer.render(scene, camera);
