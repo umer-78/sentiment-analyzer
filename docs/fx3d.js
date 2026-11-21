@@ -324,30 +324,7 @@ export function mount(host, kind = 'ml') {
   }
   const wake = () => { if (!stopped && (visible || pip) && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); } };
   addEventListener('fx:motion', wake);
-  // once the hero scrolls away on a wide screen, the scene follows the reader in a small window at the corner
-  const roomy = matchMedia('(min-width: 1360px) and (pointer: fine)');
-  let dismissed = false;
-  try { dismissed = sessionStorage.getItem('fx:pip') === 'off'; } catch { /* storage blocked */ }
-  const dock = (on) => {
-    if (on === pip || stopped) return;
-    if (on && !shell) {
-      shell = document.createElement('div');
-      shell.className = 'fx-pip';
-      shell.title = 'Back to the top';
-      shell.innerHTML = '<button type="button" aria-label="Close the 3D window">&times;</button>';
-      shell.addEventListener('click', (ev) => {
-        if (ev.target.closest('button')) { dismissed = true; try { sessionStorage.setItem('fx:pip', 'off'); } catch { /* storage blocked */ } dock(false); return; }
-        host.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-      });
-      document.body.append(shell);
-    }
-    pip = on;
-    if (on) { shell.prepend(box); requestAnimationFrame(() => shell.classList.add('on')); }
-    else { shell?.classList.remove('on'); host.prepend(box); }
-    fit();
-    wake();
-  };
-  new IntersectionObserver(([e]) => { visible = e.isIntersecting; dock(!visible && roomy.matches && !dismissed); wake(); }).observe(host);
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; wake(); }).observe(host);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
   raf = requestAnimationFrame((n) => { frame(n); box.classList.add('on'); });
   return {
